@@ -8,17 +8,43 @@
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
+
 #map {
     height: 600px;
     width: 100%;
 }
 
+button {
+    padding: 8px 12px;
+    margin: 4px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#addBtn {
+    background: #1976d2;
+    color: white;
+    font-weight: bold;
+}
+
+.popupBox {
+    font-size: 14px;
+}
+
+select {
+    padding: 6px;
+    margin: 5px 0;
+    width: 150px;
+}
+
 .legend {
     background: white;
     padding: 10px;
-    line-height: 25px;
+    line-height: 24px;
     border-radius: 5px;
 }
+
 </style>
 </head>
 
@@ -26,7 +52,11 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <h3>Pothole Detection and Road Condition Map</h3>
 
-<p><b>Click road → Add High pothole | Click pin → Delete</b></p>
+<button id="addBtn">➕ Add Pothole</button>
+
+<p id="message">
+Click <b>Add Pothole</b>, then click one location on the map.
+</p>
 
 <div id="map"></div>
 
@@ -37,113 +67,318 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 var map = L.map('map').setView([11.3420, 77.7180], 15);
 
 L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    {
-        maxZoom: 19,
-        attribution: 'Tiles © Esri'
-    }
+'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+{
+    maxZoom: 19,
+    attribution: 'Tiles © Esri'
+}
 ).addTo(map);
 
 
-function createMarker(lat, lon, severity, id) {
+var count = 0;
+var addMode = false;
+
+
+/* Create colored marker */
+
+function getIcon(severity) {
 
     var color = "green";
 
-    if (severity == "Medium") {
+    if (severity == "Medium")
         color = "orange";
-    }
 
-    if (severity == "High") {
+    if (severity == "High")
         color = "red";
-    }
 
-    var icon = L.divIcon({
+    return L.divIcon({
+
         className: '',
+
         html:
-            '<div style="' +
-            'background:' + color + ';' +
-            'width:18px;' +
-            'height:18px;' +
-            'border-radius:50%;' +
-            'border:3px solid white;' +
-            'box-shadow:0 0 4px black;' +
-            '"></div>',
+        '<div style="' +
+        'background:' + color + ';' +
+        'width:18px;' +
+        'height:18px;' +
+        'border-radius:50%;' +
+        'border:3px solid white;' +
+        'box-shadow:0 0 4px black;' +
+        '"></div>',
+
         iconSize: [24,24],
         iconAnchor: [12,12]
     });
+}
 
-    var marker = L.marker([lat, lon], {
-        icon: icon
-    }).addTo(map);
 
-    marker.bindPopup(
-        "<b>Pothole " + id + "</b><br>" +
-        "Severity: <b>" + severity + "</b><br>" +
-        "Priority: <b>" +
-        (severity == "High" ? "High" :
-         severity == "Medium" ? "Medium" : "Low") +
-        "</b><br>" +
-        "GPS: " + lat.toFixed(6) + ", " + lon.toFixed(6) +
-        "<br>Status: <b>Unrepaired</b>" +
-        "<br><br>" +
-        "<button onclick='deleteMarker()'>" +
-        "🗑️ Delete Pothole" +
-        "</button>"
-    );
+/* Add existing pothole */
 
-    marker.on('popupopen', function() {
+function addMarker(lat, lon, severity, status, id) {
 
-        window.deleteMarker = function() {
-            map.removeLayer(marker);
-        };
+    var marker = L.marker(
+        [lat, lon],
+        {icon: getIcon(severity)}
+    ).addTo(map);
 
-    });
+
+    function popupContent() {
+
+        return `
+        <div class="popupBox">
+
+        <b>Pothole ${id}</b><br><br>
+
+        Severity:
+        <b>${severity}</b><br>
+
+        Priority:
+        <b>
+        ${
+            severity == "High" ? "High" :
+            severity == "Medium" ? "Medium" : "Low"
+        }
+        </b><br>
+
+        GPS:
+        ${lat.toFixed(6)}, ${lon.toFixed(6)}
+        <br>
+
+        Status:
+        <b>${status}</b>
+
+        <br><br>
+
+        <button onclick="changeStatus()">
+        🔄 Change Status
+        </button>
+
+        <button onclick="deletePothole()">
+        🗑️ Delete
+        </button>
+
+        </div>
+        `;
+    }
+
+
+    marker.bindPopup(popupContent());
+
+
+    window.changeStatus = function() {
+
+        if (status == "Unrepaired")
+            status = "Repaired";
+        else
+            status = "Unrepaired";
+
+        marker.bindPopup(popupContent());
+
+        marker.openPopup();
+    };
+
+
+    window.deletePothole = function() {
+
+        map.removeLayer(marker);
+
+    };
 
     return marker;
 }
 
 
-/* Demo pins */
+/* Demo potholes */
 
-createMarker(11.3410, 77.7172, "High", "P1");
-createMarker(11.3420, 77.7180, "Medium", "P2");
-createMarker(11.3430, 77.7190, "Low", "P3");
+count = 3;
+
+addMarker(
+11.3410,
+77.7172,
+"High",
+"Unrepaired",
+"P1"
+);
+
+addMarker(
+11.3420,
+77.7180,
+"Medium",
+"Repaired",
+"P2"
+);
+
+addMarker(
+11.3430,
+77.7190,
+"Low",
+"Unrepaired",
+"P3"
+);
 
 
-/* Add new High pothole by clicking map */
+/* Add button */
 
-var count = 3;
+document.getElementById("addBtn").onclick = function() {
+
+    addMode = true;
+
+    document.getElementById("message").innerHTML =
+    "<b>Now click ONE location on the map.</b>";
+
+};
+
+
+/* Map click */
 
 map.on('click', function(e) {
 
+    if (!addMode)
+        return;
+
+
+    addMode = false;
+
+    var lat = e.latlng.lat;
+    var lon = e.latlng.lng;
+
     count++;
 
-    createMarker(
-        e.latlng.lat,
-        e.latlng.lng,
-        "High",
-        "P" + count
-    );
+    var id = "P" + count;
+
+
+    var form = `
+
+    <div>
+
+    <b>New Pothole ${id}</b>
+
+    <br><br>
+
+    Severity:
+
+    <select id="severity">
+
+        <option value="Low">Low</option>
+
+        <option value="Medium">Medium</option>
+
+        <option value="High" selected>High</option>
+
+    </select>
+
+    <br>
+
+    Status:
+
+    <select id="status">
+
+        <option value="Unrepaired">
+        Unrepaired
+        </option>
+
+        <option value="Repaired">
+        Repaired
+        </option>
+
+    </select>
+
+    <br>
+
+    GPS:
+    ${lat.toFixed(6)},
+    ${lon.toFixed(6)}
+
+    <br><br>
+
+    <button onclick="savePothole()">
+    ✅ Save Pothole
+    </button>
+
+    <button onclick="cancelPothole()">
+    ❌ Cancel
+    </button>
+
+    </div>
+
+    `;
+
+
+    L.popup()
+    .setLatLng(e.latlng)
+    .setContent(form)
+    .openOn(map);
+
+
+    window.savePothole = function() {
+
+        var severity =
+        document.getElementById("severity").value;
+
+        var status =
+        document.getElementById("status").value;
+
+
+        addMarker(
+            lat,
+            lon,
+            severity,
+            status,
+            id
+        );
+
+        map.closePopup();
+
+        document.getElementById("message").innerHTML =
+        "✅ Pothole saved. Click Add Pothole to add another.";
+
+    };
+
+
+    window.cancelPothole = function() {
+
+        map.closePopup();
+
+        document.getElementById("message").innerHTML =
+        "Click Add Pothole to add a new pothole.";
+
+    };
 
 });
 
 
 /* Legend */
 
-var legend = L.control({position: 'bottomright'});
+var legend = L.control({
+    position: 'bottomright'
+});
+
 
 legend.onAdd = function() {
 
-    var div = L.DomUtil.create('div', 'legend');
+    var div =
+    L.DomUtil.create(
+        'div',
+        'legend'
+    );
 
     div.innerHTML =
-        "<b>Severity</b><br>" +
-        "🟢 Low<br>" +
-        "🟠 Medium<br>" +
-        "🔴 High";
+
+    "<b>Severity</b><br>" +
+
+    "🟢 Low<br>" +
+
+    "🟠 Medium<br>" +
+
+    "🔴 High<br><br>" +
+
+    "<b>Status</b><br>" +
+
+    "Repaired / Unrepaired";
 
     return div;
+
 };
+
 
 legend.addTo(map);
 
