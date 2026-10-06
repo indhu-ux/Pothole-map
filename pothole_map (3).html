@@ -1,0 +1,153 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+#map {
+    height: 600px;
+    width: 100%;
+}
+
+.legend {
+    background: white;
+    padding: 10px;
+    line-height: 25px;
+    border-radius: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<h3>Pothole Detection and Road Condition Map</h3>
+
+<p><b>Click road → Add High pothole | Click pin → Delete</b></p>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+var map = L.map('map').setView([11.3420, 77.7180], 15);
+
+L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    {
+        maxZoom: 19,
+        attribution: 'Tiles © Esri'
+    }
+).addTo(map);
+
+
+function createMarker(lat, lon, severity, id) {
+
+    var color = "green";
+
+    if (severity == "Medium") {
+        color = "orange";
+    }
+
+    if (severity == "High") {
+        color = "red";
+    }
+
+    var icon = L.divIcon({
+        className: '',
+        html:
+            '<div style="' +
+            'background:' + color + ';' +
+            'width:18px;' +
+            'height:18px;' +
+            'border-radius:50%;' +
+            'border:3px solid white;' +
+            'box-shadow:0 0 4px black;' +
+            '"></div>',
+        iconSize: [24,24],
+        iconAnchor: [12,12]
+    });
+
+    var marker = L.marker([lat, lon], {
+        icon: icon
+    }).addTo(map);
+
+    marker.bindPopup(
+        "<b>Pothole " + id + "</b><br>" +
+        "Severity: <b>" + severity + "</b><br>" +
+        "Priority: <b>" +
+        (severity == "High" ? "High" :
+         severity == "Medium" ? "Medium" : "Low") +
+        "</b><br>" +
+        "GPS: " + lat.toFixed(6) + ", " + lon.toFixed(6) +
+        "<br>Status: <b>Unrepaired</b>" +
+        "<br><br>" +
+        "<button onclick='deleteMarker()'>" +
+        "🗑️ Delete Pothole" +
+        "</button>"
+    );
+
+    marker.on('popupopen', function() {
+
+        window.deleteMarker = function() {
+            map.removeLayer(marker);
+        };
+
+    });
+
+    return marker;
+}
+
+
+/* Demo pins */
+
+createMarker(11.3410, 77.7172, "High", "P1");
+createMarker(11.3420, 77.7180, "Medium", "P2");
+createMarker(11.3430, 77.7190, "Low", "P3");
+
+
+/* Add new High pothole by clicking map */
+
+var count = 3;
+
+map.on('click', function(e) {
+
+    count++;
+
+    createMarker(
+        e.latlng.lat,
+        e.latlng.lng,
+        "High",
+        "P" + count
+    );
+
+});
+
+
+/* Legend */
+
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function() {
+
+    var div = L.DomUtil.create('div', 'legend');
+
+    div.innerHTML =
+        "<b>Severity</b><br>" +
+        "🟢 Low<br>" +
+        "🟠 Medium<br>" +
+        "🔴 High";
+
+    return div;
+};
+
+legend.addTo(map);
+
+</script>
+
+</body>
+</html>
